@@ -8,47 +8,41 @@ const fs = require("fs");
 const app = express();
 const port = 5000;
 
-//啟動 CORS 來取得不同的請求
+//啟動 CORS 來取得不同來源的請求
 app.use(cors());
 
-// 配置 multer 存储选项
+// 配置 multer 儲存選項
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadPath = path.join(__dirname, "uploads");
     if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath); // 创建上传目录（如果不存在）
+      fs.mkdirSync(uploadPath); // 創建上傳目錄（如果不存在）
     }
-    cb(null, "uploads/"); // 指定上传目录
+    cb(null, "uploads/"); // 指定上傳目錄
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + "-" + file.originalname); // 生成唯一文件名
   },
 });
 
-// 创建一个文件过滤器函数
-const fileFilter = (req, file, cb) => {
-  // 只允许上传 jpeg, jpg, png 格式的文件
-  if (
-    file.mimetype === "image/jpeg" ||
-    file.mimetype === "image/jpg" ||
-    file.mimetype === "image/png"
-  ) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error("Invalid file type. Only JPG, JPEG, and PNG are allowed!"),
-      false
-    );
-  }
-};
-
 const upload = multer({
   storage: storage,
-  fileFilter: fileFilter, // 使用文件过滤器
+  fileFilter: function (req, file, cb) {
+    // 僅允許特定的圖片格式
+    if (
+      file.mimetype === "image/jpeg" ||
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/gif"
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error("不支援的檔案格式"), false);
+    }
+  },
 });
 
-// 处理文件上传的路由
-app.post("/upload", upload.array("files", 10), (req, res) => {
+// 處理上傳路由
+app.post("/upload", upload.array("files", 50), (req, res) => {
   const uploadedFiles = req.files;
 
   if (!uploadedFiles || uploadedFiles.length === 0) {
@@ -57,14 +51,14 @@ app.post("/upload", upload.array("files", 10), (req, res) => {
 
   const fileData = uploadedFiles.map((file) => {
     try {
-      const dimensions = sizeOf(file.path); // 获取图片尺寸
+      const dimensions = sizeOf(file.path); // 獲取圖片尺寸
       return {
-        displayHeight: (dimensions.height / dimensions.width) * 500, // 假设显示宽度为500的情况下计算显示高度
+        displayHeight: (dimensions.height / dimensions.width) * 500, // 假設顯示寬度為500的情況下計算顯示高度
         height: dimensions.height,
         width: dimensions.width,
         src: {
           large: `http://localhost:${port}/uploads/${file.filename}`,
-        }, // 改变格式为 { src: { large: url } }
+        },
       };
     } catch (error) {
       console.error(`Error processing file: ${file.filename}`, error);
@@ -72,10 +66,18 @@ app.post("/upload", upload.array("files", 10), (req, res) => {
     }
   });
 
-  res.json(fileData); // 返回图片信息
+  // 過濾掉無效的圖片檔案
+  const validFiles = fileData.filter((item) => !item.error);
+  if (validFiles.length === 0) {
+    return res.status(400).json({ error: "沒有有效的圖片檔案上傳。" });
+  }
+
+  res.json(validFiles); // 返回有效的圖片信息
 });
 
-// 获取图片列表的路由
+
+
+// 獲取圖片列表的路由
 app.get("/images", (req, res) => {
   const uploadPath = path.join(__dirname, "uploads");
 
@@ -89,12 +91,12 @@ app.get("/images", (req, res) => {
       try {
         const dimensions = sizeOf(filePath);
         return {
-          displayHeight: (dimensions.height / dimensions.width) * 500, // 计算显示高度
+          displayHeight: (dimensions.height / dimensions.width) * 500, 
           height: dimensions.height,
           width: dimensions.width,
           src: {
             large: `http://localhost:${port}/uploads/${file}`,
-          }, // 改变格式为 { src: { large: url } }
+          }, 
         };
       } catch (error) {
         console.error(`Error reading image file: ${file}`, error);
@@ -106,7 +108,7 @@ app.get("/images", (req, res) => {
   });
 });
 
-// 静态提供上传的文件
+// 靜態提供上傳的檔案
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.listen(port, () => {
