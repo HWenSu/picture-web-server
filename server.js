@@ -52,8 +52,13 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
   const fileData = uploadedFiles.map((file) => {
     try {
       const dimensions = sizeOf(file.path); // 獲取圖片尺寸
+      const displayHeight = (dimensions.height / dimensions.width) * 500
+
+      if (isNaN(displayHeight)) {
+        return { error: `Invalid image dimensions: ${file.filename}` }
+      }
+
       return {
-        displayHeight: (dimensions.height / dimensions.width) * 500, // 假設顯示寬度為500的情況下計算顯示高度
         height: dimensions.height,
         width: dimensions.width,
         src: {
@@ -62,12 +67,12 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
       };
     } catch (error) {
       console.error(`Error processing file: ${file.filename}`, error);
-      return { error: `Invalid image file: ${file.filename}` };
+      return { error: `Invalid image file: ${file.filename} `};
     }
   });
 
   // 過濾掉無效的圖片檔案
-  const validFiles = fileData.filter((item) => !item.error);
+  const validFiles = fileData.filter((item) => !item.error)
   if (validFiles.length === 0) {
     return res.status(400).json({ error: "沒有有效的圖片檔案上傳。" });
   }
@@ -77,9 +82,14 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
 
 
 
-// 獲取圖片列表的路由
+// 獲取圖片列表的路由, 增加分頁功能
 app.get("/images", (req, res) => {
   const uploadPath = path.join(__dirname, "uploads");
+  //分頁參數
+  const { page = 1, limit = 15 } = req.query
+  //計算圖片數量
+  const startIndex = (page - 1) * limit
+  const endIndex = page * limit
 
   fs.readdir(uploadPath, (err, files) => {
     if (err) {
@@ -91,20 +101,28 @@ app.get("/images", (req, res) => {
       try {
         const dimensions = sizeOf(filePath);
         return {
-          displayHeight: (dimensions.height / dimensions.width) * 500, 
+          displayHeight: (dimensions.height / dimensions.width) * 900,
           height: dimensions.height,
           width: dimensions.width,
           src: {
             large: `http://localhost:${port}/uploads/${file}`,
-          }, 
+          },
         };
       } catch (error) {
-        console.error(`Error reading image file: ${file}`, error);
-        return { error: `Invalid image file: ${file}` };
+        console.error(`Error reading image file: ${file}, error`);
+        return { error: `Invalid image file: ${file} `};
       }
     });
+    // 分頁數據
+    const paginatedData = fileData.slice(startIndex, endIndex)
 
-    res.json(fileData);
+    //返回分頁結果: 返回一個包含當前頁碼、總頁數、總項目數和圖片數據的物件
+    res.json({
+      currentPage: page,
+      totalPages: Math.ceil(files.length / limit),
+      totalItems: files.length,
+      data: paginatedData,
+    })
   });
 });
 
