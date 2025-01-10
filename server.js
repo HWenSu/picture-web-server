@@ -9,7 +9,13 @@ const app = express();
 const port = 5000;
 
 //啟動 CORS 來取得不同來源的請求
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://picture-web.vercel.app/", // 替換為你的前端 URL
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 // 允許所有 OPTIONS 預檢請求
 app.options("*", cors()); 
 
