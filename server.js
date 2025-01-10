@@ -10,6 +10,9 @@ const port = 5000;
 
 //啟動 CORS 來取得不同來源的請求
 app.use(cors());
+// 允許所有 OPTIONS 預檢請求
+app.options("*", cors()); 
+
 
 const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`;
 
@@ -130,8 +133,14 @@ app.get("/images", (req, res) => {
 });
 
 // 靜態提供上傳的檔案
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"),{
+  // 確保返回正確的 CORS 標頭
+    setHeaders: (res) => {
+      res.setHeader("Access-Control-Allow-Origin", "https://picture-hk768obsw-elvasus-projects.vercel.app");
+    },
+  }));
 
 app.listen(port, () => {
   console.log(`Server running on ${BASE_URL}`);
-});
+},
+);
