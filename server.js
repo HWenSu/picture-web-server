@@ -11,6 +11,9 @@ const port = 5000;
 //啟動 CORS 來取得不同來源的請求
 app.use(cors());
 
+const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`;
+
+
 // 配置 multer 儲存選項
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -62,7 +65,7 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
         height: dimensions.height,
         width: dimensions.width,
         src: {
-          large: `https://localhost:${port}/uploads/${file.filename}`,
+          large: `${BASE_URL}/uploads/${file.filename}`,
         },
       };
     } catch (error) {
@@ -105,7 +108,7 @@ app.get("/images", (req, res) => {
           height: dimensions.height,
           width: dimensions.width,
           src: {
-            large: `https://localhost:${port}/uploads/${file}`,
+            large: `${BASE_URL}/uploads/${file}`,
           },
         };
       } catch (error) {
@@ -130,5 +133,5 @@ app.get("/images", (req, res) => {
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running on ${BASE_URL}`);
 });
