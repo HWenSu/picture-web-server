@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/images",
-      "destination": "/api/index.js"
+      "destination": "/api/server.js"
     },
     {
       "source": "/upload",
-      "destination": "/api/index.js"
+      "destination": "/api/server.js"
     }
   ]
 }
