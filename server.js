@@ -62,7 +62,7 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
         height: dimensions.height,
         width: dimensions.width,
         src: {
-          large: `http://localhost:${port}/uploads/${file.filename}`,
+          large: `https://localhost:${port}/uploads/${file.filename}`,
         },
       };
     } catch (error) {
@@ -105,7 +105,7 @@ app.get("/images", (req, res) => {
           height: dimensions.height,
           width: dimensions.width,
           src: {
-            large: `http://localhost:${port}/uploads/${file}`,
+            large: `https://localhost:${port}/uploads/${file}`,
           },
         };
       } catch (error) {
