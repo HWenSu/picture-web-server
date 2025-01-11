@@ -9,10 +9,10 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`;
-
+const uploadPath = path.resolve(process.env.UPLOADS_PATH || "uploads");
 // 啟用 CORS
 app.use(cors({
-  origin: "https://picture-web.vercel.app",
+  origin: ["https://picture-web.vercel.app","http://localhost:3000"],
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
@@ -26,6 +26,7 @@ app.get("/health", (req, res) => {
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadPath = path.join(__dirname, "uploads");
+    console.log("Resolved uploads path:", uploadPath);
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
@@ -67,7 +68,7 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
 
 // 圖片列表路由
 app.get("/images", (req, res, next) => {
-  const uploadPath = path.join(__dirname, "../../uploads");
+  const uploadPath = path.join(__dirname, uploadPath);
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 15;
 
@@ -109,9 +110,24 @@ app.get("/images", (req, res, next) => {
 // 提供靜態文件
 app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
   setHeaders: (res) => {
-    res.setHeader("Access-Control-Allow-Origin", "https://picture-web.vercel.app");
+    res.setHeader("Access-Control-Allow-Origin", "*");
   },
 }));
+
+// 設置 CSP
+const helmet = require("helmet");
+
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["*"],
+      fontSrc: ["*"],
+      imgSrc: ["*"],
+      scriptSrc: ["*"],
+      styleSrc: ["*"],
+    },
+  })
+);
 
 // 啟動服務
 app.listen(port, () => {
