@@ -4,15 +4,18 @@ const cors = require("cors");
 const sizeOf = require("image-size");
 const path = require("path");
 const fs = require("fs");
+const helmet = require("helmet");
 
 const app = express();
 const port = process.env.PORT || 5000;
 
 const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`;
-const uploadPath = path.resolve(process.env.UPLOADS_PATH || "uploads");
+const uploadPath = path.resolve(process.env.UPLOADS_PATH || path.join(__dirname, "uploads"));
+console.log("Resolved uploads path:", uploadPath);
+
 // 啟用 CORS
 app.use(cors({
-  origin: ["https://picture-web.vercel.app","http://localhost:3000"],
+  origin: ["https://picture-web.vercel.app", "http://localhost:3000"],
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
@@ -25,8 +28,6 @@ app.get("/health", (req, res) => {
 // 配置 multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, "uploads");
-    console.log("Resolved uploads path:", uploadPath);
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
@@ -67,8 +68,7 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
 });
 
 // 圖片列表路由
-app.get("/images", (req, res, next) => {
-  const uploadPath = path.join(__dirname, uploadPath);
+app.get("/images", (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 15;
 
@@ -108,28 +108,26 @@ app.get("/images", (req, res, next) => {
 });
 
 // 提供靜態文件
-app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+app.use("/uploads", express.static(uploadPath, {
   setHeaders: (res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
   },
 }));
 
 // 設置 CSP
-const helmet = require("helmet");
-
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
-      defaultSrc: ["*"],
-      fontSrc: ["*"],
-      imgSrc: ["*"],
-      scriptSrc: ["*"],
-      styleSrc: ["*"],
+      defaultSrc: ["'self'"],
+      fontSrc: ["'self'", "data:", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", BASE_URL, "data:"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     },
   })
 );
 
 // 啟動服務
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Server running on ${BASE_URL}`);
 });
