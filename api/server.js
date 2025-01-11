@@ -8,54 +8,37 @@ const fs = require("fs");
 const app = express();
 const port = process.env.PORT || 5000;
 
-
-
-//啟動 CORS 來取得不同來源的請求
-app.use(
-  cors({
-    origin: "https://picture-web.vercel.app", // 替換為你的前端 URL
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-// 允許所有 OPTIONS 預檢請求
-app.options("*", cors()); 
-
-
 const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`;
 
+// 啟用 CORS
+app.use(cors({
+  origin: "https://picture-web.vercel.app",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
-// 配置 multer 儲存選項
+// 健康檢查路由
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
+// 配置 multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadPath = path.join(__dirname, "uploads");
     if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath); // 創建上傳目錄（如果不存在）
+      fs.mkdirSync(uploadPath, { recursive: true });
     }
-    cb(null, "uploads/"); // 指定上傳目錄
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname); // 生成唯一文件名
+    cb(null, Date.now() + "-" + file.originalname);
   },
 });
 
-const upload = multer({
-  storage: storage,
-  fileFilter: function (req, file, cb) {
-    // 僅允許特定的圖片格式
-    if (
-      file.mimetype === "image/jpeg" ||
-      file.mimetype === "image/png" ||
-      file.mimetype === "image/gif"
-    ) {
-      cb(null, true);
-    } else {
-      cb(new Error("不支援的檔案格式"), false);
-    }
-  },
-});
+const upload = multer({ storage });
 
-// 處理上傳路由
+// 上傳路由
 app.post("/upload", upload.array("files", 50), (req, res) => {
   const uploadedFiles = req.files;
 
@@ -65,13 +48,7 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
 
   const fileData = uploadedFiles.map((file) => {
     try {
-      const dimensions = sizeOf(file.path); // 獲取圖片尺寸
-      const displayHeight = (dimensions.height / dimensions.width) * 500
-
-      if (isNaN(displayHeight)) {
-        return { error: `Invalid image dimensions: ${file.filename}` }
-      }
-
+      const dimensions = sizeOf(file.path);
       return {
         height: dimensions.height,
         width: dimensions.width,
@@ -80,34 +57,24 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
         },
       };
     } catch (error) {
-      console.error(`Error processing file: ${file.filename}`, error);
-      return { error: `Invalid image file: ${file.filename} `};
+      console.error("Error processing file:", file.filename, error);
+      return { error: "Invalid image file" };
     }
   });
 
-  // 過濾掉無效的圖片檔案
-  const validFiles = fileData.filter((item) => !item.error)
-  if (validFiles.length === 0) {
-    return res.status(400).json({ error: "沒有有效的圖片檔案上傳。" });
-  }
-
-  res.json(validFiles); // 返回有效的圖片信息
+  res.json(fileData.filter((item) => !item.error));
 });
 
-
-
-// 獲取圖片列表的路由, 增加分頁功能
-app.get("/images", (req, res) => {
+// 圖片列表路由
+app.get("/images", (req, res, next) => {
   const uploadPath = path.join(__dirname, "uploads");
-  //分頁參數
-  const { page = 1, limit = 15 } = req.query
-  //計算圖片數量
-  const startIndex = (page - 1) * limit
-  const endIndex = page * limit
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 15;
 
   fs.readdir(uploadPath, (err, files) => {
     if (err) {
-      return res.status(500).send("Failed to read images");
+      console.error("Failed to read images:", err);
+      return res.status(500).json({ error: "Failed to read images" });
     }
 
     const fileData = files.map((file) => {
@@ -123,31 +90,30 @@ app.get("/images", (req, res) => {
           },
         };
       } catch (error) {
-        console.error(`Error reading image file: ${file}, error`);
-        return { error: `Invalid image file: ${file} `};
+        console.error(`Error reading image file: ${file}`, error);
+        return null;
       }
     });
-    // 分頁數據
-    const paginatedData = fileData.slice(startIndex, endIndex)
 
-    //返回分頁結果: 返回一個包含當前頁碼、總頁數、總項目數和圖片數據的物件
+    const paginatedData = fileData.filter(Boolean).slice((page - 1) * limit, page * limit);
+
     res.json({
       currentPage: page,
-      totalPages: Math.ceil(files.length / limit),
-      totalItems: files.length,
+      totalPages: Math.ceil(fileData.length / limit),
+      totalItems: fileData.length,
       data: paginatedData,
-    })
+    });
   });
 });
 
-// 靜態提供上傳的檔案
-app.use("/uploads", express.static(path.join(__dirname, "uploads"),{
-  // 確保返回正確的 CORS 標頭
-    setHeaders: (res) => {
-      res.setHeader("Access-Control-Allow-Origin", "https://picture-hk768obsw-elvasus-projects.vercel.app");
-    },
-  }));
+// 提供靜態文件
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+  setHeaders: (res) => {
+    res.setHeader("Access-Control-Allow-Origin", "https://picture-web.vercel.app");
+  },
+}));
 
+// 啟動服務
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
