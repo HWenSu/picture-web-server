@@ -6,7 +6,9 @@ const path = require("path");
 const fs = require("fs");
 
 const app = express();
-const port = 5000;
+const PORT = process.env.PORT || 5000;
+
+
 
 //啟動 CORS 來取得不同來源的請求
 app.use(
@@ -146,7 +148,6 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads"),{
     },
   }));
 
-app.listen(port, () => {
-  console.log(`Server running on ${BASE_URL}`);
-},
-);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
