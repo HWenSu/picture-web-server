@@ -67,7 +67,7 @@ app.post("/upload", upload.array("files", 50), (req, res) => {
 
 // 圖片列表路由
 app.get("/images", (req, res, next) => {
-  const uploadPath = path.join(__dirname, "uploads");
+  const uploadPath = path.join(__dirname, "../uploads");
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 15;
 
@@ -95,7 +95,7 @@ app.get("/images", (req, res, next) => {
       }
     });
 
-    const paginatedData = fileData.filter(Boolean).slice((page - 1) * limit, page * limit);
+    const paginatedData = fileData.filter(Boolean).slice((page - 1) * lim$it, page * limit);
 
     res.json({
       currentPage: page,
