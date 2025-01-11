@@ -95,7 +95,7 @@ app.get("/images", (req, res, next) => {
       }
     });
 
-    const paginatedData = fileData.filter(Boolean).slice((page - 1) * lim$it, page * limit);
+    const paginatedData = fileData.filter(Boolean).slice((page - 1) * limit, page * limit);
 
     res.json({
       currentPage: page,
