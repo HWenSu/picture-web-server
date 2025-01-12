@@ -8,10 +8,19 @@ const helmet = require("helmet");
 
 const app = express();
 const port = process.env.PORT || 5000;
-
 const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`;
-const uploadPath = path.resolve(process.env.UPLOADS_PATH || path.join(__dirname, "uploads"));
+const uploadPath = path.join(__dirname, "uploads");
+
+console.log("__dirname:", __dirname);
 console.log("Resolved uploads path:", uploadPath);
+
+// 確保 uploads 資料夾存在
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true });
+  console.log(`Uploads folder created at: ${uploadPath}`);
+} else {
+  console.log(`Uploads folder already exists at: ${uploadPath}`);
+}
 
 // 啟用 CORS
 app.use(cors({
@@ -28,9 +37,6 @@ app.get("/health", (req, res) => {
 // 配置 multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
     cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
