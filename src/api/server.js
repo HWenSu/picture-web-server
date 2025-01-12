@@ -5,6 +5,8 @@ const sizeOf = require("image-size");
 const path = require("path");
 const fs = require("fs");
 const helmet = require("helmet");
+const sharp = require("sharp");
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -47,28 +49,42 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // 上傳路由
-app.post("/upload", upload.array("files", 50), (req, res) => {
+app.post("/upload", upload.array("files", 50), async (req, res) => {
   const uploadedFiles = req.files;
 
   if (!uploadedFiles || uploadedFiles.length === 0) {
     return res.status(400).json({ error: "No files uploaded" });
   }
 
-  const fileData = uploadedFiles.map((file) => {
+  const fileDataPromises = uploadedFiles.map(async (file) => {
     try {
-      const dimensions = sizeOf(file.path);
+      const compressedFilePath = path.join(uploadPath, `compressed-${file.filename}`)
+      //使用sharp壓縮圖片，設置目標大小為 2MB
+      await sharp(file.path)
+        .jpeg({quality: 80}) //壓縮質量為80
+        .toFile(compressedFilePath)
+
+      //刪除原始文件
+      fs.unlinkSync(file.path)
+
+      //返回壓縮後的圖片信息
+      const dimensions = sizeOf(compressedFilePath);
       return {
         height: dimensions.height,
         width: dimensions.width,
         src: {
-          large: `${BASE_URL}/uploads/${file.filename}`,
+          large: `${BASE_URL}/uploads/compressed-${file.filename}`,
         },
       };
     } catch (error) {
       console.error("Error processing file:", file.filename, error);
       return { error: "Invalid image file" };
     }
+    
   });
+  
+  //等所有圖片壓縮完成後才返回
+  const fileData = await Promise.all(fileDataPromises);
 
   res.json(fileData.filter((item) => !item.error));
 });
