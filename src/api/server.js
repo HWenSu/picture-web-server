@@ -30,12 +30,22 @@ const metadataPath = path.join(__dirname, "metadata");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
+// 允許來自 Zeabur 的 CORS 請求
+const allowedOrigins = ["https://picture-web.vercel.app"]; // 你的前端網址
+
+
 // CORS 設定，允許跨域請求
 const corsOptions = {
-  origin: ["https://picture-web.vercel.app", "http://localhost:3000"],
-  methods: ["GET", "POST", "OPTIONS"],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
+  credentials: true
 };
 app.use(cors(corsOptions));
 
