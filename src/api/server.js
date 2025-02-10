@@ -47,6 +47,16 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 };
+
+// ✅ 處理 `OPTIONS` 預檢請求
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", "https://picture-web.vercel.app");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  return res.status(204).send();
+});
+
 app.use(cors(corsOptions));
 
 // 提供靜態圖片
